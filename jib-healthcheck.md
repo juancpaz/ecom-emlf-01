@@ -146,6 +146,28 @@ Se trata de una aplicación compleja de comercio electrónico, la típica tienda
 
 ## Contenedores
 
+El sistema se estructura en varios componentes, más o menos independientes:
+
+* Infraestructura:
+  - configuration-server
+  - discovery-server
+  - gateway-server
+  - admin-server
+  - security-service
+  - user-service
+* Servicios:
+  - product-service
+  - history-service
+  - cart-service
+  - shipping-service
+* Aplicación:
+  - web-server
+* Externos:
+  - MongoDB
+  - RabbitMQ
+  - MySql
+
+
 Infraestructura, servicios, web y externos
 
 ![alt text](ecom-03.png)
