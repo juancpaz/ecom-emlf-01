@@ -167,14 +167,28 @@ El sistema se estructura en varios componentes, más o menos independientes:
   - RabbitMQ
   - MySql
 
-
-Infraestructura, servicios, web y externos
+La siguiente imagen ilustra los contenedores y sus dependencias:
 
 ![alt text](ecom-03.png)
 
-## Dependencias
+El nombre de cada componente es sufucientemente descriptivo, de momento sólo están implementados los de configuration, discovery, gateway y admin, y parcialmente, product y web. Por diseño, la aplicación puede seguir trabajando con funcionalidad reducida si algún servicio no está disponible.
+
+La seguridad, autenficacion y autorización, todavía sin habilitr, usará OAuth.
+
+El servidor de configuración es el único que no depende de otros, es el servidor de Configuración centralizada y gestiona ficheros yaml en git: [ecom-config-repo](https://github.com/juancpaz/ecom-config-repo)
+
+El servidor de discovery es un servidor Eureka para el registro y descubrimiento de servicios, mientras que en el Gateway se comporta como API Manager centralizado con seguridad delegada en el se
+
+* Zuul:  
+* Hystrix: 
+* Ribbon: 
+* Feign: 
+
+Una vez desplegados, todas las peticiones se encauzan a través del gateway, que la resuelve contra el discovery, aplicando seguridad, balanceo, filtros, etc...
 
 ![alt text](ecom-04.png)
+
+Internamente, cada contenedor de servicio resuelve un contexto de dominio, separando Consultas y Comandos, con consistencia eventual, y aplicando SAGA's cuando es necesario resolver las trasacciones más complejas.
 
 ## Sistema de HealthCheck
 
