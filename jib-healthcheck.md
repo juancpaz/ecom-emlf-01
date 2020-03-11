@@ -177,14 +177,14 @@ La seguridad, autenficacion y autorización, todavía sin habilitr, usará OAuth
 
 El servidor de configuración es el único que no depende de otros, es el servidor de Configuración centralizada y gestiona ficheros yaml en git: [ecom-config-repo](https://github.com/juancpaz/ecom-config-repo)
 
-El servidor de discovery es un servidor Eureka para el registro y descubrimiento de servicios, mientras que en el Gateway se comporta como API Manager centralizado con seguridad delegada en el se
+El servidor de discovery es un servidor Eureka para el registro y descubrimiento de servicios, mientras que en el Gateway se comporta como API Manager centralizado con seguridad delegada en el security server.
 
-* Zuul:  
-* Hystrix: 
-* Ribbon: 
-* Feign: 
+* Zuul: Proxy inverso que usa Ribbon para localizar instancias concretas de microservicios
+* Ribbon: Balanceador y enrutado dinámico
+* Hystrix: Resistencia a fallos
+* Feign: Clientes Eureka
 
-Una vez desplegados, todas las peticiones se encauzan a través del gateway, que la resuelve contra el discovery, aplicando seguridad, balanceo, filtros, etc...
+Una vez desplegados, todas las peticiones se encauzan a través del gateway, que las resuelve contra el discovery, aplicando seguridad, balanceo, filtros, etc...
 
 ![alt text](ecom-04.png)
 
