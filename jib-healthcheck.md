@@ -206,9 +206,22 @@ La siguiente figura resume el comportamiento del HealthCheck:
 
 ![alt text](ecom-02.png)
 
-La imagen base contiene tanto en entrypoint.sh, que es lo que se ejecuta al arrancar el contenedor, como el programa java propiamente dicho. Estos 2 elementos se heredan en las imágenes derivadas y estarán disponibles en los contenedores derivados, y ya cada uno declarará en yaml las comprobaciones que le interesen.
+La imagen base contiene tanto el entrypoint.sh, que es lo que se ejecuta al arrancar el contenedor, como el programa java propiamente dicho. Estos 2 elementos se heredan en las imágenes derivadas y estarán disponibles en los contenedores derivados, y ya cada uno declarará en yaml las comprobaciones que le interesen.
 
 ### El entrypoint en baseimage
+
+El [entrypoint.sh](https://github.com/juancpaz/ecom/blob/master/ecom-base-image/src/main/jib/entrypoint.sh) es un shell script de bash que se ejecuta al arrancar el contenedor derivado
+
+En resumen, 
+
+1. Ejecuta los healthchecks, buscando por este orden, ficheros health-check.yml, health-check.json o health-check.xml
+1. Si los healthcheck detectan un problema, entrypoint finaliza, finalizando también el contenedor, si finalizan sin error, ejecuta el servicio cuya clase main se le pasa por parametro
+
+La ejecución del entrypoint se parametriza desde el plugin de Jib del pom.xml del servicio derivado, p.e.
+
+
+
+
 
 ### Declaración de health checks
 
