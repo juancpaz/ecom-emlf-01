@@ -32,7 +32,6 @@ Otra característica de Jib es que no usa Dockerfile's, todo lo necesario para d
 
 <details><summary>Declaración Jbi en pom.xml (Click para expandir)</summary>
 
-
 ```xml
 <plugin>
 	<groupId>com.google.cloud.tools</groupId>
@@ -249,9 +248,89 @@ Opciones:
 
 ### Declaración de health checks
 
-El script de entrypoint.sh busca el healthcheck.yaml en el classpath, es decir, debemos declarar en fichero en el src/main/resource para que se copie al classpath, por su parte, jib copia todo lo pongamos src/main/jib a la raiz de la imagen.
+El script de entrypoint.sh busca el healthcheck.yaml en el classpath, es decir, debemos declarar el fichero en el src/main/resource para que se copie al classpath, por su parte, jib copia todo lo pongamos src/main/jib a la raiz de la imagen.
 
+De momento, se pueden declarar 2 tipos de HealthCheck, PING que sólo comprueba que el host:puerto indicado este disponible, y REST, que realiza un GET sobre una url y valida la respuesta recibida contra un valor esperado.
 
+healthchecks.yml
+name              nombre global
+description       descripción global, no se usa
+timeout           tiemeout global, no se usa
+checkouts         lista de checkouts
+  type            PING | REST
+  name            nombre del checkout 
+  description     descripción del checkout
+  delay           retardo, no se usa
+  timeout         timeout del check, si se sobrepasa, el check se da por fallado
+  hostname        PING
+  port            PING
+  url             REST
+  expected        Respuesta esperada para REST
+    response      expresión REST completa, por ejemplo "{\"status\":"\UP\"}"
+    fields        Para respuestas más complejas comprobar campos concretos (sólo para primer nivel de anidacion)
+      name        nombre del campo, p.e: status
+      value       valor del campo, p.e: UP
+
+Algunos ejemplos: 
+
+<details><summary>health-check.yml del discovery (Click para expandir)</summary>
+
+```yaml
+name: "healthchecks-1"
+description: "Configuration Server Healthchecks"
+healthChecks:
+- type: "PING"
+  name: "rabbit-healthcheck-15672"
+  description: "RabbitDBHealthCheck 1"
+  delay: 5
+  timeout: 30
+  hostname: "ecom-rabbit1"
+  port: 15672
+- type: "PING"
+  name: "rabbit-healthcheck-5672"
+  description: "RabbitDBHealthCheck 1"
+  delay: 5
+  timeout: 30
+  hostname: "ecom-rabbit1"
+  port: 5672  
+- type: "PING"
+  name: "mongodb-healthcheck-27017"
+  description: "MongoDBHealthCheck 1"
+  delay: 5
+  timeout: 30
+  hostname: "ecom-mongodb"
+  port: 27017
+- type: "REST"
+  name: "check-configuration-server-8888"
+  description: "Check Configuration Server"
+  delay: 5
+  timeout: 30
+  url: "http://ecom-configuration-server:8888/actuator/health"
+  expected:
+    response: "{\"status\":\"UP\"}"
+```
+
+</details>
+
+<details><summary>health-check.yml del gateway (Click para expandir)</summary>
+
+```yaml
+name: "healthchecks-1"
+description: "Gateway Server Healthchecks"
+healthChecks:
+- type: "REST"
+  name: "check-discovery-server-8761"
+  description: "Check Configuration Server"
+  delay: 5
+  timeout: 30
+  url: "http://ecom-discovery-server:8761/actuator/health"
+  expected: 
+    fields:
+    - name: "status"
+      value: "UP"
+```
+
+</details>
 
 ### Ejecución de HealthChecks
 
