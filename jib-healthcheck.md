@@ -334,6 +334,21 @@ healthChecks:
 
 ### Ejecución de HealthChecks
 
+El programa de HealthCheck es una apllicacion Spring Boot que implementa CommandLineRunner, en el mismo proyecto maven que genera la imagen base, [ecom-base-image](https://github.com/juancpaz/ecom/tree/master/ecom-base-image), y que también incluye el entrypoint.sh, asi como el fichero de paquetes debian que se instalarán automaticamente: [packages.txt](https://github.com/juancpaz/ecom/blob/master/ecom-base-image/src/main/jib/packages.txt)
+
+Jib no genera un jar autocontenido, genera 3 directories (/app/resources, /app/classes y /app/libs), para luego poder crear las imagenes en capas, por ello ejecutar la aplicación desde la linea de comandos con `java -jar`, aunque podríamos usar 2 perfiles distintos, uno para generar el jar de spring boot convencional, otro para Jib
+
+También podriamos ejecutar el contenedor de base-image indicandole el parámetro --skip-service
+
+En cualquier caso, en punto de entrada es CommandLineTool.run(), CommandFactory crea el Command, y un CommandExecutor, lo ejecuta, el único comando implementado es health-check, HealthCheckCommand.
+
+HealthCheckCommand parsea el fichero health-check.yml y crea un HealthChecks con una coleccion de HealthCheck, que serán PingHealthCheck o RestHealthCheck.
+
+Por ultimo, el HealthCheckCommand lanza HealthChecksExecutor.execute(healthChecks)
+
+[imagen]()
+
+
 ### Creación de nuevos HEalthChecks
 
 ## Referencias
