@@ -219,11 +219,39 @@ En resumen,
 
 La ejecución del entrypoint se parametriza desde el plugin de Jib del pom.xml del servicio derivado, p.e.
 
+```xml
+	<entrypoint>
+		<shell>bash</shell>
+		<option>-c</option>
+		<arg>chmod +x /entrypoint.sh &amp;&amp; sync &amp;&amp; /entrypoint.sh --mainclass com.juancpaz.ecom.admin.AdminServer --healthcheck</arg>
+	</entrypoint>	
+```
 
+Si queremos saltar el healthcheck o indicar otro fichero de declaración, debemos indicarlo en los parametros de entrypoint.sh
 
-
+```bash
+$ ./entrypoint.sh 
+Sintaxis: ./entrypoint.sh options [filename]
+Opciones:
+  --help           Mostrar esta ayuda
+  --build-base     Para debug
+  --nop            Para debug
+  --test           Para debug
+  --mainclass MainClass
+                   Declara MainClass como Main del servicio
+  --healthcheck [filename]
+                   Ejecuta los healthchecks declarados en filename (path absoluto)
+                   Ignora healthcheck.yml en classpath si existe
+  --skip-healthcheck
+                   Ejecutar servicio, no ejecutar healthcheck
+  --skip-service   Ejecutar sólo healthcheck
+```
 
 ### Declaración de health checks
+
+El script de entrypoint.sh busca el healthcheck.yaml en el classpath, es decir, debemos declarar en fichero en el src/main/resource para que se copie al classpath, por su parte, jib copia todo lo pongamos src/main/jib a la raiz de la imagen.
+
+
 
 ### Ejecución de HealthChecks
 
