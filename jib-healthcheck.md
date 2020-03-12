@@ -201,10 +201,6 @@ Podemos reducir el número de comprobaciones y el tiempo que tardan en ejecutars
 
 El orden en el que se arrancan los contenedores puede ser de menos dependientes a más dependientes, observando dependencias entre ellos para que no surjan dependencias circulares.
 
-La siguiente figura resume el comportamiento del HealthCheck:
-
-![alt text](ecom-02.png)
-
 La imagen base contiene tanto el entrypoint.sh, que es lo que se ejecuta al arrancar el contenedor, como el programa java propiamente dicho. Estos 2 elementos se heredan en las imágenes derivadas y estarán disponibles en los contenedores derivados, y ya cada uno declarará en yaml las comprobaciones que le interesen.
 
 ### El entrypoint en baseimage
@@ -340,16 +336,17 @@ Jib no genera un jar autocontenido, genera 3 directories (/app/resources, /app/c
 
 También podriamos ejecutar el contenedor de base-image indicandole el parámetro --skip-service
 
-En cualquier caso, en punto de entrada es CommandLineTool.run(), CommandFactory crea el Command, y un CommandExecutor, lo ejecuta, el único comando implementado es health-check, HealthCheckCommand.
+En cualquier caso, el punto de entrada es CommandLineTool.run(), CommandFactory crea el Command, y un CommandExecutor, lo ejecuta, el único comando implementado es health-check, HealthCheckCommand.
 
 HealthCheckCommand parsea el fichero health-check.yml y crea un HealthChecks con una coleccion de HealthCheck, que serán PingHealthCheck o RestHealthCheck.
 
 Por ultimo, el HealthCheckCommand lanza HealthChecksExecutor.execute(healthChecks)
 
-[imagen]()
+La siguiente figura resume lo comentado:
 
+![alt text](ecom-02.png)
 
-### Creación de nuevos HEalthChecks
+### Creación de nuevos HealthChecks
 
 ## Referencias
 
