@@ -10,7 +10,7 @@ Por una parte iremos un paso más allá del uso común de Jib, implementado una 
 
 Por otra, implementaremos un sistema de HealthCheck de contenedores parametrizable, que permita a cada contenedor realizar las comprobaciones que le interesen.
 
-La arquitectura del Sistema de Comercio Electronico usado se basa, de hecho ES, la expuesta en el libro [Practical Microservices Architectural Patterns: Event-Based Java Microservices with Spring Boot and Spring Cloud](https://www.amazon.es/Practical-Microservices-Architectural-Patterns-Event-Based/dp/1484245008), pero dockerizada y con las adaptaciones que se verán.
+La arquitectura del Sistema de Comercio Electrónico usado se basa, de hecho ES, la expuesta en el libro [Practical Microservices Architectural Patterns: Event-Based Java Microservices with Spring Boot and Spring Cloud](https://www.amazon.es/Practical-Microservices-Architectural-Patterns-Event-Based/dp/1484245008), pero dockerizada y con las adaptaciones que se verán.
 
 Los fuentes de este articulo están subidos a github:
 
@@ -22,13 +22,13 @@ No es el objeto de este articulo exponer la arquitectura CQRS-ES, ni otros detal
 
 ## La idea general
 
-Jib es un plugin de maven/gradle que automaticamente gestiona las capas de las imagenes Docker generadas por el build, discrimina elementos de S.O, dependencias java y el programa propiamente dicho, para reutilizarlas entre contenedores, y para que durante el build/push/pull no sea necesario trasmitir imagenes completas. 
+Jib es un plugin de maven/gradle que automáticamente gestiona las capas de las imágenes Docker generadas por el build, discrimina elementos de S.O, dependencias java y el programa propiamente dicho, para reutilizarlas entre contenedores, y para que durante el build/push/pull no sea necesario trasmitir imágenes completas. 
 
-Era una evolución lógica en tecnología de contenedores para JVM, considerando que la mayor parte de un programa Java son dependencias, no tiene sentido subir imagenes de varios GB's sólo por haber cambiado un literal.
+Era una evolución lógica en tecnología de contenedores para JVM, considerando que la mayor parte de un programa Java son dependencias, no tiene sentido subir imágenes de varios GB's sólo por haber cambiado un literal.
 
 ![alt text](ecom-05.png)
 
-Otra caracteristica de Jib es que no usa Dockerfile's, todo lo necesario para definir la imagen se debe declarar en el pom.xml de maven, p.e. 
+Otra característica de Jib es que no usa Dockerfile's, todo lo necesario para definir la imagen se debe declarar en el pom.xml de maven, p.e. 
 
 <details><summary>Declaración Jbi en pom.xml (Click para expandir)</summary>
 
@@ -98,11 +98,11 @@ install_packages
 
 o realizar operaciones más complejas como comprobar el estado de servicios externos.
 
-La imagen base se comportara, permitidme la licencia, como una imagen abstracta, y las imagenes que la heredan como imagenes concretas. La operación de HealthCheck se declara en la base, pero la declaración de HealthCheks y la ejecución propiamente dicha de la comprobación se realiza en la imagen concreta.
+La imagen base se comportara, permitidme la licencia, como una imagen abstracta, y las imágenes que la heredan como imágenes concretas. La operación de HealthCheck se declara en la base, pero la declaración de HealthCheks y la ejecución propiamente dicha de la comprobación se realiza en la imagen concreta.
 
 ![alt text](ecom-01.png)
 
-El sistema que he implementado, declara comprobaciones en ficheros yaml, auqnue también entiende json y xml, por ejemplo:
+El sistema que he implementado, declara comprobaciones en ficheros yaml, aunque también entiende json y xml, por ejemplo:
 
 ```yaml
 name: "healthchecks-1"
@@ -171,13 +171,15 @@ La siguiente imagen ilustra los contenedores y sus dependencias:
 
 ![alt text](ecom-03.png)
 
-El nombre de cada componente es sufucientemente descriptivo, de momento sólo están implementados los de configuration, discovery, gateway y admin, y parcialmente, product y web. Por diseño, la aplicación puede seguir trabajando con funcionalidad reducida si algún servicio no está disponible.
+El nombre de cada componente es suficientemente descriptivo, de momento sólo están implementados los de configuration, discovery, gateway y admin, y parcialmente, product y web. Por diseño, la aplicación puede seguir trabajando con funcionalidad reducida si algún servicio no está disponible.
 
-La seguridad, autenficacion y autorización, todavía sin habilitr, usará OAuth.
+La seguridad, autenticación y autorización, todavía sin habilitar, usará OAuth.
 
 El servidor de configuración es el único que no depende de otros, es el servidor de Configuración centralizada y gestiona ficheros yaml en git: [ecom-config-repo](https://github.com/juancpaz/ecom-config-repo)
 
 El servidor de discovery es un servidor Eureka para el registro y descubrimiento de servicios, mientras que en el Gateway se comporta como API Manager centralizado con seguridad delegada en el security server.
+
+El gateway realiza su trabajo usando distintos frameworks de Netflix y Apache integrados en Spring Cloud:
 
 * Zuul: Proxy inverso que usa Ribbon para localizar instancias concretas de microservicios
 * Ribbon: Balanceador y enrutado dinámico
@@ -188,11 +190,23 @@ Una vez desplegados, todas las peticiones se encauzan a través del gateway, que
 
 ![alt text](ecom-04.png)
 
-Internamente, cada contenedor de servicio resuelve un contexto de dominio, separando Consultas y Comandos, con consistencia eventual, y aplicando SAGA's cuando es necesario resolver las trasacciones más complejas.
+Internamente, cada contenedor de servicio resuelve un contexto de dominio, separando Consultas y Comandos, con consistencia eventual, y aplicando SAGA's cuando es necesario resolver las transacciones más complejas.
 
 ## Sistema de HealthCheck
 
+Llegamos al objetivo principal de este artículo, comentar el sistema de HealthCheck, implementado en la imagen base que heredan el resto de imágenes que necesitan que se den ciertas condiciones antes de arrancan. 
+
+Por ejemplo, todos necesitan que el servidor de configuración esté arrancado, o el gateway necesita el discovery, los servicios de negocio necesitan lo servidores de persistencia, el de mensajería, además de todos los de infraestructura.
+
+Podemos reducir el número de comprobaciones y el tiempo que tardan en ejecutarse si arrancamos todos los contenedores en el orden adecuado, aunque la configuración no necesita BD, arrancamos estos servidores, a su vez sin dependencias.
+
+El orden en el que se arrancan los contenedores puede ser de menos dependientes a más dependientes, observando dependencias entre ellos para que no surjan dependencias circulares.
+
+La siguiente figura resume el comportamiento del HealthCheck:
+
 ![alt text](ecom-02.png)
+
+La imagen base contiene tanto en entrypoint.sh, que es lo que se ejecuta al arrancar el contenedor, como el programa java propiamente dicho. Estos 2 elementos se heredan en las imágenes derivadas y estarán disponibles en los contenedores derivados, y ya cada uno declarará en yaml las comprobaciones que le interesen.
 
 ### El entrypoint en baseimage
 
@@ -215,5 +229,5 @@ https://enmilocalfunciona.io/construccion-de-imagenes-docker-con-jib/
 
 ## Notas
 
-Habria que detener completamente el arranque de un contenedor hasta q no se de una condicion, pero docker compose arranca los contenedores uno tras otro, sin esperar, segun el orden de declaración en el yaml
+Habría que detener completamente el arranque de un contenedor hasta q no se de una condición, pero docker compose arranca los contenedores uno tras otro, sin esperar, según el orden de declaración en el yaml
 
