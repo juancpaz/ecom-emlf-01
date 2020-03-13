@@ -1,5 +1,179 @@
 # Spring Cloud con Jib y Docker Compose
 
+## Guía rápida
+
+1. Incluir el plugin jib-maven-plugin en nuestro pom.xml
+
+<details><summary>Declaración Jbi en pom.xml (Click para expandir)</summary>
+
+```xml
+<plugin>
+	<groupId>com.google.cloud.tools</groupId>
+	<artifactId>jib-maven-plugin</artifactId>
+	<version>2.0.0</version>				
+	<configuration>
+		<from>
+			<image>registry.gitlab.com/juancpaz/ecom/ecom-base-image:0.0.1-SNAPSHOT</image>
+		</from>
+		<to>
+			<image>ecom/${project.artifactId}:${project.version}</image>
+		</to>				
+		<container>
+			<entrypoint>
+				<shell>bash</shell>
+				<option>-c</option>
+				<arg>chmod +x /entrypoint.sh &amp;&amp; sync &amp;&amp; /entrypoint.sh --mainclass com.juancpaz.ecom.registry.DiscoveryServer --healthcheck</arg>
+			</entrypoint>					
+			<ports>
+				<port>9000</port>
+			</ports>
+			<creationTime>USE_CURRENT_TIMESTAMP</creationTime>						
+		</container>
+	</configuration>
+	<executions>
+		<execution>
+			<phase>install</phase>
+			<goals>
+				<goal>dockerBuild</goal>
+			</goals>
+		</execution>
+	</executions>
+</plugin>
+
+```
+
+</details>
+
+
+A destacar, se usa ecom-base-image come imagen base, se indica explicitamente la MainClass del servicio con el parámetro --healthcheck, que es un parámetro para entrypoint.sh, no para el servicio.
+
+2. En el src/main/resources se crea un fichero health-check.yml con los health checks deseados, por ejemplo:
+
+<details><summary>Declaración de health-check.yml (Click para expandir)</summary>
+
+```yml
+name: "healthchecks-1"
+description: "Discovery Server Healthchecks"
+healthChecks:
+- type: "PING"
+  name: "rabbit-healthcheck-15672"
+  description: "RabbitDBHealthCheck 1"
+  delay: 5
+  timeout: 30
+  hostname: "ecom-rabbit1"
+  port: 15672
+- type: "PING"
+  name: "rabbit-healthcheck-5672"
+  description: "RabbitDBHealthCheck 1"
+  delay: 5
+  timeout: 30
+  hostname: "ecom-rabbit1"
+  port: 5672  
+- type: "PING"
+  name: "mongodb-healthcheck-27017"
+  description: "MongoDBHealthCheck 1"
+  delay: 5
+  timeout: 30
+  hostname: "ecom-mongodb"
+  port: 27017
+- type: "REST"
+  name: "check-configuration-server-8888"
+  description: "Check Configuration Server"
+  delay: 5
+  timeout: 30
+  url: "http://ecom-configuration-server:8888/actuator/health"
+  expected:
+    response: "{\"status\":\"UP\"}"
+```
+
+</details>
+
+
+3. Y esto sería todo, podremos levantar nuestros servicios con un docker-compose como:
+
+<details><summary>docker-compose.yml (Click para expandir)</summary>
+
+```yml
+version: '3.7'
+services:
+  ecom-rabbit1:
+    container_name: ecom-rabbit1
+    image: 'rabbitmq:3-management'
+    hostname: rabbit1
+    expose:
+      - 15672
+      - 5672
+    ports:
+      - '15672:15672'
+      - '5672:5672'
+    volumes:
+      - 'rabbitmq_data:/data'
+    networks:
+      - ecom-network
+  ecom-mongodb:
+    container_name: ecom-mongodb
+    image: 'mongo:latest'
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: rootpassword
+    expose:
+      - 27017
+    ports:
+      - '27017:27017'
+    depends_on:
+      - ecom-rabbit1
+    volumes:
+      - 'mongodb_data_container:/data/db'
+    networks:
+      - ecom-network      
+  ecom-configuration-server:
+    container_name: ecom-configuration-server
+    image: 'ecom/ecom-configuration-server:0.0.1-SNAPSHOT'
+    environment:
+      - SPRING_PROFILES_ACTIVE=container
+    expose:
+      - 8888
+    ports:
+      - '8888:8888'
+    depends_on:
+      - ecom-rabbit1
+      - ecom-mongodb
+    networks:
+      - ecom-network
+  ecom-discovery-server:
+    container_name: ecom-discovery-server
+    image: 'ecom/ecom-discovery-server:0.0.1-SNAPSHOT'
+    environment:
+      - SPRING_PROFILES_ACTIVE=container
+      - SPRING_CLOUD_CONFIG_URI=http://ecom-configuration-server:8888
+      - EUREKA_INSTANCE_PREFER_IP_ADDRESS=true      
+    expose:
+      - 8761
+    ports:
+      - '8761:8761'
+    depends_on:
+      - ecom-rabbit1
+      - ecom-mongodb
+      - ecom-configuration-server
+    links:
+      - 'ecom-configuration-server:ecom-configuration-server'
+      - 'ecom-rabbit1:ecom-rabbit1'
+      - 'ecom-mongodb:ecom-mongodb'
+    networks:
+      - ecom-network
+volumes:
+  mongodb_data_container: null
+  rabbitmq_data: null
+networks:
+  ecom-network:
+    driver: bridge      
+```
+
+</details>
+
+
+## Introducción
+
 Cuando desplegamos arquitecturas de microservicios frecuentemente nos encontramos con dependencias entre contenedores, que obliga a arrancarlos en un orden específico.
 
 Nos debemos asegurar de que cada contenedor ha arrancado correctamente y que los servicios que implementa están disponibles antes de arrancar los dependientes. Con Kubernetes u OpenShift este control lo proporcionan distintos mecanismos de los orquestadores, pero mientras desarrollamos en nuestro local, nos puede interesar una infraestructura más liviana orquestada con Docker Compose.
@@ -348,18 +522,71 @@ La siguiente figura resume lo comentado:
 
 ### Creación de nuevos HealthChecks
 
+Tomando como referencia los ya implementados, bastaría com implementar la definición HealthCheck, y su ejecutor, AbstractHealthCheckExecutor. 
+
+Por ejemplo, si queremos implementar uno que verifique la existencia de un fichero:
+
+```java
+public enum HealthCheckType {
+	PING("ping"), REST("rest"), FEXISTS("fexists");
+	...
+}
+
+@Data
+@EqualsAndHashCode(callSuper=true)
+public class FileExistsHEalthCheck extends HealthCheck {
+	private String filename;
+}
+
+@Component
+public class PingHealthCheckExecutor extends AbstractHealthCheckExecutor {
+	@Override
+	protected Boolean executeHeathCheck(HealthCheck healthCheck) throws Exception {
+		final Path path = Paths.get(healthCheck.getFilename());
+		return Files.exists(path);
+	}
+}
+
+```
+
+Y algo que habría que mejorar porque sin duda se puede evitar, añadir el executor a HealthChecksExecutor
+
+```java
+@Slf4j
+@Service
+public class HealthChecksExecutor {
+	@Autowired 
+	private PingHealthCheckExecutor pingHealthCheckExecutor;
+	@Autowired 
+	private RestHealthCheckExecutor restHealthCheckExecutor;
+	@Autowired
+	private FileExistsCheckExecutor fileExistsHealthCheckExecutor; // Nuevo HealthCheck
+
+	public Boolean execute(HealthChecks healthChecks) throws HealthCheckException {
+		...
+		for (HealthCheck healthCheck: healthChecks.getHealthChecks()) {
+			...
+			} else if (healthCheck.getType() == HealthCheckType.REST) {
+				callableExecutor.setHealthCheckExecutor(restHealthCheckExecutor);
+			} else if (healthCheck.getType() == HealthCheckType.FEXISTS) { // Nuevo HealthCheck
+				callableExecutor.setHealthCheckExecutor(FileExistsHealthCheckExecutor);
+			}
+			...
+		}
+		...
+	}
+}	
+
+```
+
 ## Referencias
 
 https://enmilocalfunciona.io/construccion-de-imagenes-docker-con-jib/
+https://github.com/GoogleContainerTools/jib
 
 ## Temas pendientes y próximos pasos
 
-* Uso de distintos orquestadores, distintas configuraciones en los mismos fuentes.
+* Estudiar si esto es útil con otros orquestadores, como Kubernetes u OpenShift
 * Generalizar y crear un starter como los de spring boot, para reutilizar esta arquitectura en otros proyectos
-* Implementar otros tipos de HealthCheck
+* Mejorar el mecanismo para implementar otros tipos de HealthCheck
 * Implementar timeout global para el conjunto de healthchecks
-
-## Notas
-
-Habría que detener completamente el arranque de un contenedor hasta q no se de una condición, pero docker compose arranca los contenedores uno tras otro, sin esperar, según el orden de declaración en el yaml
-
