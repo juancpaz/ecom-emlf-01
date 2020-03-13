@@ -1,4 +1,4 @@
-# Spring Cloud con Jib y Docker Compose
+# Implementando Healthcheks para Spring Cloud, Jib y Docker Compose
 
 ## Guía rápida
 
