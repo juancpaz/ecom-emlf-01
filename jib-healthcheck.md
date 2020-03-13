@@ -45,7 +45,7 @@
 </details>
 
 
-A destacar, se usa ecom-base-image come imagen base, se indica explicitamente la MainClass del servicio con el parámetro --healthcheck, que es un parámetro para entrypoint.sh, no para el servicio.
+A destacar, se usa ecom-base-image come imagen base, se indica explícitamente la MainClass del servicio con el parámetro --healthcheck, que es un parámetro para entrypoint.sh, no para el servicio.
 
 2. En el src/main/resources se crea un fichero health-check.yml con los health checks deseados, por ejemplo:
 
@@ -396,7 +396,7 @@ La ejecución del entrypoint se parametriza desde el plugin de Jib del pom.xml d
 	</entrypoint>	
 ```
 
-Si queremos saltar el healthcheck o indicar otro fichero de declaración, debemos indicarlo en los parametros de entrypoint.sh
+Si queremos saltar el healthcheck o indicar otro fichero de declaración, debemos indicarlo en los parámetros de entrypoint.sh
 
 ```bash
 $ ./entrypoint.sh 
@@ -504,15 +504,15 @@ healthChecks:
 
 ### Ejecución de HealthChecks
 
-El programa de HealthCheck es una apllicacion Spring Boot que implementa CommandLineRunner, en el mismo proyecto maven que genera la imagen base, [ecom-base-image](https://github.com/juancpaz/ecom/tree/master/ecom-base-image), y que también incluye el entrypoint.sh, asi como el fichero de paquetes debian que se instalarán automaticamente: [packages.txt](https://github.com/juancpaz/ecom/blob/master/ecom-base-image/src/main/jib/packages.txt)
+El programa de HealthCheck es una aplicación Spring Boot que implementa CommandLineRunner, en el mismo proyecto maven que genera la imagen base, [ecom-base-image](https://github.com/juancpaz/ecom/tree/master/ecom-base-image), y que también incluye el entrypoint.sh, así como el fichero de paquetes debian que se instalarán automáticamente: [packages.txt](https://github.com/juancpaz/ecom/blob/master/ecom-base-image/src/main/jib/packages.txt)
 
-Jib no genera un jar autocontenido, genera 3 directories (/app/resources, /app/classes y /app/libs), para luego poder crear las imagenes en capas, por ello ejecutar la aplicación desde la linea de comandos con `java -jar`, aunque podríamos usar 2 perfiles distintos, uno para generar el jar de spring boot convencional, otro para Jib
+Jib no genera un jar autocontenido, genera 3 directories (/app/resources, /app/classes y /app/libs), para luego poder crear las imágenes en capas, por ello ejecutar la aplicación desde la linea de comandos con `java -jar`, aunque podríamos usar 2 perfiles distintos, uno para generar el jar de spring boot convencional, otro para Jib
 
-También podriamos ejecutar el contenedor de base-image indicandole el parámetro --skip-service
+También podríamos ejecutar el contenedor de base-image indicandole el parámetro --skip-service
 
 En cualquier caso, el punto de entrada es CommandLineTool.run(), CommandFactory crea el Command, y un CommandExecutor, lo ejecuta, el único comando implementado es health-check, HealthCheckCommand.
 
-HealthCheckCommand parsea el fichero health-check.yml y crea un HealthChecks con una coleccion de HealthCheck, que serán PingHealthCheck o RestHealthCheck.
+HealthCheckCommand parsea el fichero health-check.yml y crea un HealthChecks con una colección de HealthCheck, que serán PingHealthCheck o RestHealthCheck.
 
 Por ultimo, el HealthCheckCommand lanza HealthChecksExecutor.execute(healthChecks)
 
@@ -522,7 +522,7 @@ La siguiente figura resume lo comentado:
 
 ### Creación de nuevos HealthChecks
 
-Tomando como referencia los ya implementados, bastaría com implementar la definición HealthCheck, y su ejecutor, AbstractHealthCheckExecutor. 
+Tomando como referencia los ya implementados, bastaría con implementar la definición HealthCheck, y su ejecutor, AbstractHealthCheckExecutor. 
 
 Por ejemplo, si queremos implementar uno que verifique la existencia de un fichero:
 
@@ -587,7 +587,7 @@ https://github.com/GoogleContainerTools/jib
 
 ## Temas pendientes y próximos pasos
 
-* Estudiar si esto es útil con otros orquestadores, como Kubernetes u OpenShift
-* Generalizar y crear un starter como los de spring boot, para reutilizar esta arquitectura en otros proyectos
 * Mejorar el mecanismo para implementar otros tipos de HealthCheck
 * Implementar timeout global para el conjunto de healthchecks
+* Estudiar si esto es útil con otros orquestadores, como Kubernetes u OpenShift
+* Generalizar y crear un starter como los de spring boot, para reutilizar esta arquitectura en otros proyectos
